@@ -22,6 +22,7 @@ from .errors import CraftEnvironmentError
 
 TRUTHY_STRINGS = frozenset({"y", "yes", "true", "on", "1"})
 FALSEY_STRINGS = frozenset({"", "n", "no", "false", "off", "0"})
+TRUTH_VALUE_STRINGS = TRUTHY_STRINGS | FALSEY_STRINGS
 
 
 def get_env_bool(var: str) -> Optional[bool]:
@@ -33,9 +34,9 @@ def get_env_bool(var: str) -> Optional[bool]:
     """
     if var not in os.environ:
         return None
-    value = os.environ[var]
-    if value not in TRUTHY_STRINGS | FALSEY_STRINGS:
-        raise CraftEnvironmentError(var, value)
+    value = os.environ[var].lower()
+    if value not in TRUTH_VALUE_STRINGS:
+        raise CraftEnvironmentError(var, value, valid_values=TRUTH_VALUE_STRINGS)
     return value in TRUTHY_STRINGS
 
 
@@ -51,8 +52,6 @@ def confirm_with_user(prompt: str, *, default: bool) -> bool:
     """
     if not sys.stdin.isatty():
         return default
-
-    choices = " [Y/n]: " if default else " [y/N]: "
-
-    reply = input(prompt + choices).lower().strip()
+    choices = "Y/n" if default else "y/N"
+    reply = input(f"{prompt} [{choices}]: ").lower().strip()
     return reply[0] == "y" if reply else default
