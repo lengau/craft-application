@@ -51,10 +51,10 @@ class CraftEnvironmentError(CraftError):
         docs_url: Optional[str] = None,
         valid_values: Optional[Iterable[str]] = None,
     ) -> None:
-        details = f"Value could not be parsed: {value}"
+        details = f"Value could not be parsed: {value!r}"
         if valid_values is not None:
             details += "\nValid values: "
-            details += ", ".join(valid_values)
+            details += ", ".join((repr(v) for v in valid_values))
         super().__init__(
             message=f"Invalid value in environment variable {variable}",
             details=details,
