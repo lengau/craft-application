@@ -1,0 +1,8 @@
+# Basic project example
+---
+name: test-name
+version: "0.0"
+
+parts:
+  my-part:
+    plugin: nil

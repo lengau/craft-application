@@ -1,0 +1,31 @@
+# Complex model example.
+---
+name: project-name
+title: Some project title
+description: |
+  A really, really, really long description of this project.
+  It's multiple lines and stuff as well.
+summary: A summary of this project
+license: AGPL-3.0
+website: https://snapcraft.io
+contact:
+  - my@email.address
+  - my-other@email.address
+donation:
+  - donation link
+  - Other donation option
+issues:
+  - mailing_list@email.address
+  - https://bugs.this_project.org
+source-code: https://github.com/canonical/craft-application
+
+version: 0.0.0
+
+base: bare
+build-base: core22
+
+parts:
+  a-part:
+    plugin: nil
+  another-part:
+    plugin: nil

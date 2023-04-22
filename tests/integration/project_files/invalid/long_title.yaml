@@ -1,0 +1,7 @@
+name: test-name
+version: "0.0"
+parts:
+  my-part:
+    plugin: nil
+
+title: 12345678901234567890123456789012345678901

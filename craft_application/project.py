@@ -1,4 +1,4 @@
-#  This file is part of craft-application.
+# This file is part of craft-application.
 #
 # Copyright 2023 Canonical Ltd.
 #
@@ -20,7 +20,7 @@ This defines the structure of the input file (e.g. snapcraft.yaml)
 import io
 import pathlib
 import re
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Union, List
 
 import craft_parts
 import pydantic
@@ -70,42 +70,7 @@ class Project(ProjectModel):
     summary: Optional[SummaryStr]
     description: Optional[str]
     license: Optional[str]
-    parts: Dict[str, Any]  # parts are handled by craft-parts
-
-    @pydantic.validator("name")
-    @classmethod
-    def _validate_name(cls, name: str) -> str:
-        if not re.match(r"^[a-z0-9-]*[a-z][a-z0-9-]*$", name):
-            raise ValueError(
-                "names can only use ASCII lowercase letters, numbers, and hyphens, "
-                "and must have at least one letter"
-            )
-
-        if name.startswith("-"):
-            raise ValueError("names cannot start with a hyphen")
-
-        if name.endswith("-"):
-            raise ValueError("names cannot end with a hyphen")
-
-        if "--" in name:
-            raise ValueError("names cannot have two hyphens in a row")
-
-        return name
-
-    @pydantic.validator("version")
-    @classmethod
-    def _validate_version(cls, version: str) -> str:
-        if version and not re.match(
-            r"^[a-zA-Z0-9](?:[a-zA-Z0-9:.+~-]*[a-zA-Z0-9+~])?$", version
-        ):
-            raise ValueError(
-                "versions consist of upper- and lower-case alphanumeric characters, "
-                "as well as periods, colons, plus signs, tildes, and hyphens. They cannot "
-                "begin with a period, colon, plus sign, tilde, or hyphen. They cannot end "
-                "with a period, colon, or hyphen"
-            )
-
-        return version
+    parts: Dict[str, Dict[str, Any]]  # parts are handled by craft-parts
 
     @pydantic.validator("parts", each_item=True)
     @classmethod
@@ -146,6 +111,10 @@ class Project(ProjectModel):
             raise errors.ProjectValidationError(
                 _format_pydantic_errors(err.errors(), file_name=project_file.name)
             )
+
+    def marshal(self) -> Dict[str, Union[str, List[str], Dict[str, Any]]]:
+        """Convert to a dictionary."""
+        return self.dict(by_alias=True, exclude_unset=True)
 
     @property
     def effective_base(self) -> str:
