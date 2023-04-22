@@ -70,7 +70,7 @@ def test_get_env_bool_unset(var):
     value=strategies.text(
         alphabet=strategies.characters(blacklist_categories="C"),
         min_size=1
-    ).filter(lambda x: x not in TRUTH_VALUE_STRINGS)
+    ).filter(lambda x: x.lower() not in TRUTH_VALUE_STRINGS)
 )
 def test_get_env_bool_error(var, value):
     with pytest.MonkeyPatch.context() as mp:
