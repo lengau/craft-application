@@ -72,7 +72,7 @@ class VersionStr(ConstrainedStr):
     """A valid version string."""
 
     max_length = 32
-    strict = True
+    strict = False
     strip_whitespace = True
     regex = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9:.+~-]*[a-zA-Z0-9+~])?$")
 

@@ -88,7 +88,7 @@ class PartsLifecycle:
         except craft_parts.PartsError as err:
             raise errors.PartsLifecycleError(str(err)) from err
 
-    def run(self, step_name: str, part_names: Optional[List[str]]) -> None:
+    def run(self, step_name: str, part_names: Optional[List[str]] = None) -> None:
         """Run the lifecycle manager for the parts."""
         try:
             target_step = self._lifecycle_steps[step_name]
@@ -117,7 +117,7 @@ class PartsLifecycle:
             if err.filename:
                 msg = f"{err.filename}: {msg}"
             raise errors.PartsLifecycleError(msg) from err
-        except Exception as err:  # noqa BLE001: Converting general error.
+        except Exception as err:  # noqa: BLE001 - Converting general error.
             raise errors.PartsLifecycleError(str(err)) from err
 
     def clean(self, part_names: Optional[List[str]]) -> None:

@@ -18,7 +18,51 @@ from unittest import mock
 
 import pytest
 
-from craft_application import utils
+from craft_application import utils, Project
+
+import functools
+from pathlib import Path
+from unittest import mock
+
+import craft_providers
+import pytest
+from overrides import override
+
+from craft_application import Application, ProviderManager
+
+
+class FakeApplication(Application):
+    def generate_metadata(self) -> None:
+        pass
+
+    def create_package(self) -> Path:
+        return Path()
+
+
+class FakeProviderManager(ProviderManager):
+    @override
+    def get_configuration(self, *, base, instance_name) -> craft_providers.Base:
+        pass
+
+    @functools.cached_property
+    def mock_provider(self):
+        return mock.Mock(spec=craft_providers.Provider)
+
+
+@pytest.fixture
+def provider_manager():
+    yield FakeProviderManager("test_app", provider_map={})
+
+
+@pytest.fixture
+def application(provider_manager):
+    yield FakeApplication(
+        "test_app",
+        "0.0",
+        "Summary",
+        provider_manager,
+        project_class=Project
+    )
 
 
 @pytest.fixture

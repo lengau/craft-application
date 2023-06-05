@@ -57,7 +57,7 @@ class Application(metaclass=abc.ABCMeta):
     :ivar version: application version
     """
 
-    def __init__(  # noqa PLR0913 - Can't determine how to reduce arguments.
+    def __init__(  # noqa: PLR0913 - Can't determine how to reduce arguments.
         self,
         name: str,
         version: str,
@@ -155,6 +155,7 @@ class Application(metaclass=abc.ABCMeta):
         self, instance_path: pathlib.PosixPath
     ) -> Generator[Executor, None, None]:
         """Run the application in managed mode."""
+        emit.trace("Preparing managed instance...")
         provider = self._manager.get_provider()
         project_path = Path().resolve()
         inode_number = project_path.stat().st_ino
@@ -174,6 +175,7 @@ class Application(metaclass=abc.ABCMeta):
             build_base=base_configuration.alias.value,  # type: ignore[attr-defined]
             allow_unstable=True,
         ) as instance:
+            emit.trace("Instance launched")
             try:
                 with emit.pause():
                     instance.mount(host_source=project_path, target=instance_path)
@@ -192,6 +194,7 @@ class Application(metaclass=abc.ABCMeta):
 
     def run_managed(self) -> None:
         """Run the application in a managed instance."""
+        emit.trace(f"Running {self.name} in a managed instance...")
         instance_path = pathlib.PosixPath("/root/project")
         with self.managed_instance(instance_path) as instance:
             try:
@@ -221,12 +224,14 @@ class Application(metaclass=abc.ABCMeta):
 
         retcode = 1
         try:
+            emit.trace("pre-parsing arguments...")
             global_args = dispatcher.pre_parse_args(sys.argv[1:])
             if global_args.get("version"):
                 emit.message(f"{self.name} {self.version}")
                 emit.ended_ok()
                 return 0
 
+            emit.trace("Preparing application...")
             command = cast(
                 AppCommand,
                 dispatcher.load_command(
@@ -241,6 +246,7 @@ class Application(metaclass=abc.ABCMeta):
                 ),
             )
             if self._manager.is_managed or not command.is_managed:
+                emit.trace("Command is running in managed mode. Running...")
                 retcode = dispatcher.run() or 0
             else:
                 self.run_managed()
