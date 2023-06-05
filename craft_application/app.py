@@ -1,6 +1,6 @@
 #  This file is part of craft-application.
 #
-# Copyright 2023 Canonical Ltd.
+#  Copyright 2023 Canonical Ltd.
 #
 #  This program is free software: you can redistribute it and/or modify it
 #  under the terms of the GNU Lesser General Public License version 3, as
@@ -23,7 +23,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Generator, List, Optional, Type, cast
+from typing import Generator, List, Optional, Type, cast
 
 from craft_cli import (
     ArgumentParsingError,
@@ -119,6 +119,7 @@ class Application(metaclass=abc.ABCMeta):
     def parts_lifecycle(self) -> PartsLifecycle:
         """Get the parts lifecycle for this application."""
         return PartsLifecycle(
+            self.name,
             self.project.parts,
             cache_dir=self.cache_dir,
             work_dir=Path.cwd(),
@@ -171,8 +172,7 @@ class Application(metaclass=abc.ABCMeta):
             project_path=project_path,
             base_configuration=base_configuration,
             instance_name=instance_name,
-            # craft_parts.Base doesn't currently define an alias, but it's always there.
-            build_base=base_configuration.alias.value,  # type: ignore[attr-defined]
+            build_base=base_configuration.alias.value,
             allow_unstable=True,
         ) as instance:
             emit.trace("Instance launched")

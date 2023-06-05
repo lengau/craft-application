@@ -1,6 +1,6 @@
 #  This file is part of craft-application.
 #
-# Copyright 2023 Canonical Ltd.
+#  Copyright 2023 Canonical Ltd.
 #
 #  This program is free software: you can redistribute it and/or modify it
 #  under the terms of the GNU Lesser General Public License version 3, as
@@ -14,21 +14,26 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Provider manager for craft-application."""
-import abc
-import functools
+import functools  # noqa: I001
 import os
 import sys
-from typing import Callable, Mapping, Optional
+from typing import Optional
 
 import craft_providers
 from craft_cli import CraftError, emit
-from craft_providers import Provider, lxd, multipass
+from craft_providers import Provider
+from craft_providers.bases import get_base_alias, get_base_from_alias
+from craft_providers.lxd import LXDProvider, configure_buildd_image_remote
+from craft_providers.multipass import MultipassProvider
 
-from . import project, utils
+# This import fails if moved higher up.
+from craft_providers.actions.snap_installer import Snap
+
+from . import utils
 from .errors import CraftEnvironmentError
 
 
-class ProviderManager(metaclass=abc.ABCMeta):
+class ProviderManager:
     """Manager for craft_providers in an application.
 
     :param app_name: the application name.
@@ -42,17 +47,13 @@ class ProviderManager(metaclass=abc.ABCMeta):
         self,
         app_name: str,
         *,
-        provider_map: Mapping[str, Callable[[], Provider]],
         managed_mode_env: Optional[str] = None,
         provider_env: Optional[str] = None,
     ) -> None:
         self.app_name = app_name
-        self.project = project
-        self.provider_map = provider_map
-        self.managed_mode_env = (
-            managed_mode_env or f"{self.app_name.upper()}_MANAGED_MODE"
-        )
-        self.provider_env = provider_env or f"{self.app_name.upper()}_PROVIDER"
+        self._app_upper = app_name.upper()
+        self.managed_mode_env = managed_mode_env or f"{self._app_upper}_MANAGED_MODE"
+        self.provider_env = provider_env or f"{self._app_upper}_PROVIDER"
 
     def _get_default_provider(self) -> Provider:
         """Get the default provider class to use for this application.
@@ -60,9 +61,8 @@ class ProviderManager(metaclass=abc.ABCMeta):
         :returns: An instance of the default Provider class.
         """
         if sys.platform == "linux":
-            lxd.configure_buildd_image_remote()
-            return lxd.LXDProvider(lxd_project=self.app_name)
-        return multipass.MultipassProvider()
+            return self._provider_lxd
+        return self._provider_multipass
 
     @functools.cached_property
     def is_managed(self) -> bool:
@@ -76,16 +76,17 @@ class ProviderManager(metaclass=abc.ABCMeta):
         if self.provider_env not in os.environ:
             return self._get_default_provider()
         provider_name = os.environ[self.provider_env]
-        if provider_name not in self.provider_map:
+        if not hasattr(self, f"_provider_{provider_name}"):
+            valid_providers = [k[10:] for k in dir(self) if k.startswith("_provider_")]
             raise CraftEnvironmentError(
                 variable=self.provider_env,
                 value=provider_name,
-                valid_values=self.provider_map.keys(),
+                valid_values=valid_providers,
             )
         emit.debug(
             f"Using provider {provider_name!r} from environment variable {self.provider_env}"
         )
-        provider = self.provider_map[provider_name]()
+        provider: Provider = getattr(self, f"_provider_{provider_name}")
         if not provider.is_provider_installed():
             auto_install = utils.confirm_with_user(
                 f"Provider {provider_name} is not installed. Install now?",
@@ -100,7 +101,6 @@ class ProviderManager(metaclass=abc.ABCMeta):
                 )
         return provider
 
-    @abc.abstractmethod
     def get_configuration(
         self,
         *,
@@ -111,4 +111,30 @@ class ProviderManager(metaclass=abc.ABCMeta):
 
         :param base: The base to lookup.
         :param instance_name: A name to assign to the instance.
+
+        This method should be overridden by a specific application if it intends to
+        use base names that don't align to a "distro:version" naming convention.
         """
+        distro, version = base.split(":", maxsplit=2)[:2]
+        alias = get_base_alias((distro, version))
+        base_class = get_base_from_alias(alias)
+        return base_class(
+            alias=alias,
+            hostname=instance_name,
+            snaps=[Snap(name=self.app_name, channel=None, classic=True)],
+            environment={self.managed_mode_env: "1"},
+        )
+
+    @functools.cached_property
+    def _provider_lxd(self) -> LXDProvider:
+        """Get the LXD provider for this manager."""
+        # TODO: Replace this deprecated function.
+        # https://github.com/canonical/craft-providers/issues/260
+        configure_buildd_image_remote()
+        lxd_remote = os.getenv(f"{self._app_upper}_LXD_REMOTE", "local")
+        return LXDProvider(lxd_project=self.app_name, lxd_remote=lxd_remote)
+
+    @functools.cached_property
+    def _provider_multipass(self) -> MultipassProvider:
+        """Get the Multipass provider for this manager."""
+        return MultipassProvider()
